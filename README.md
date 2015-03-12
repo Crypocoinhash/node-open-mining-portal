@@ -516,13 +516,16 @@ are commented in [scripts/blocknotify.c](scripts/blocknotify.c).
 
 #### 3) Start the portal
 
+
 ```bash
-node init.js
+sudo cp ~/nomp/service/nomp.conf /etc/init/nomp.conf
+```
+
+```bash
+sudo start nomp
 ```
 
 ###### Optional enhancements for your awesome new mining pool server setup:
-* Use something like [forever](https://github.com/nodejitsu/forever) to keep the node script running
-in case the master process crashes. 
 * Use something like [redis-commander](https://github.com/joeferner/redis-commander) to have a nice GUI
 for exploring your redis database.
 * Use something like [logrotator](http://www.thegeekstuff.com/2010/07/logrotate-examples/) to rotate log 
