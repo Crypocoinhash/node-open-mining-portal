@@ -522,7 +522,7 @@ sudo cp ~/nomp/service/nomp.conf /etc/init/nomp.conf
 ```
 
 ```bash
-sudo start nomp
+sudo service nomp start
 ```
 
 ###### Optional enhancements for your awesome new mining pool server setup:
