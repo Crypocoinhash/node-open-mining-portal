@@ -6,8 +6,9 @@ var util   = require('stratum-pool/lib/util.js');
 
 var Cryptsy  = require('./apiCryptsy.js');
 var Poloniex = require('./apiPoloniex.js');
-var Mintpal  = require('./apiMintpal.js');
+var Bleutrade  = require('./apiBleutrade.js');
 var Bittrex  = require('./apiBittrex.js');
+var Ccex  = require('./apiCcex.js');
 var Stratum  = require('stratum-pool');
 
 module.exports = function(logger){
@@ -73,7 +74,7 @@ module.exports = function(logger){
         // 'API_KEY',
         // 'API_SECRET'
     );
-    var mintpalApi =  new Mintpal(
+    var bleutradeApi =  new Bleutrade(
         // 'API_KEY',
         // 'API_SECRET'
     );
@@ -82,7 +83,12 @@ module.exports = function(logger){
         // 'API_KEY',
         // 'API_SECRET'
     );
-
+	
+	var ccexApi =  new Ccex(
+        // 'API_KEY',
+        // 'API_SECRET'
+    );
+	
     // 
     // market data collection from Poloniex
     //
@@ -199,7 +205,10 @@ module.exports = function(logger){
         });
     };
 
-    
+    // 
+    // market data collection from Cryptsy
+    //
+	
     this.getProfitDataCryptsy = function(callback){
         async.series([
             function(taskCallback){
@@ -288,44 +297,51 @@ module.exports = function(logger){
         
     };
 
-
-    this.getProfitDataMintpal = function(callback){
+	// 
+    // market data collection from Bleutrade
+    //
+	
+	this.getProfitDataBleutrade = function(callback){
         async.series([
             function(taskCallback){
-                mintpalApi.getTicker(function(err, response){
-                    if (err || !response.data){
+                bleutradeApi.getTicker(function(err, response){
+					
+                    if (err || !response.result){
                         taskCallback(err);
                         return;
                     }
 
                     Object.keys(symbolToAlgorithmMap).forEach(function(symbol){
-                        response.data.forEach(function(market){
+						
+                        response.result.forEach(function(market){
                             var exchangeInfo = profitStatus[symbolToAlgorithmMap[symbol]][symbol].exchangeInfo;
-                            if (!exchangeInfo.hasOwnProperty('Mintpal'))
-                                exchangeInfo['Mintpal'] = {};
-
-                            var marketData = exchangeInfo['Mintpal'];
-
+                            if (!exchangeInfo.hasOwnProperty('Bleutrade'))
+                                exchangeInfo['Bleutrade'] = {};
+							
+                            var marketData = exchangeInfo['Bleutrade'];
+                            var marketPair = market.MarketName.match(/([\w]+)_([\w-_]+)/)
+                            market.exchange = marketPair[2]
+                            market.code = marketPair[1]
                             if (market.exchange == 'BTC' && market.code == symbol) {
                                 if (!marketData.hasOwnProperty('BTC'))
                                     marketData['BTC'] = {};
-
-                                marketData['BTC'].last = new Number(market.last_price);
-                                marketData['BTC'].baseVolume = new Number(market['24hvol']);
-                                marketData['BTC'].quoteVolume = new Number(market['24hvol'] / market.last_price);
-                                marketData['BTC'].ask = new Number(market.top_ask);
-                                marketData['BTC'].bid = new Number(market.top_bid);
+								
+                                marketData['BTC'].last = new Number(market.Last);
+                                marketData['BTC'].baseVolume = new Number(market.BaseVolume);
+                                marketData['BTC'].quoteVolume = new Number(market.BaseVolume / market.Last);
+                                marketData['BTC'].ask = new Number(market.Ask);
+                                marketData['BTC'].bid = new Number(market.Bid);
                             }
 
                             if (market.exchange == 'LTC' && market.code == symbol) {
                                 if (!marketData.hasOwnProperty('LTC'))
                                     marketData['LTC'] = {};
-
-                                marketData['LTC'].last = new Number(market.last_price);
-                                marketData['LTC'].baseVolume = new Number(market['24hvol']);
-                                marketData['LTC'].quoteVolume = new Number(market['24hvol'] / market.last_price);
-                                marketData['LTC'].ask = new Number(market.top_ask);
-                                marketData['LTC'].bid = new Number(market.top_bid);
+			
+                                marketData['LTC'].last = new Number(market.Last);
+                                marketData['LTC'].baseVolume = new Number(market.BaseVolume);
+                                marketData['LTC'].quoteVolume = new Number(market.BaseVolume / market.Last);
+                                marketData['LTC'].ask = new Number(market.Ask);
+                                marketData['LTC'].bid = new Number(market.Bid);
                             }
 
                         });
@@ -336,15 +352,15 @@ module.exports = function(logger){
             function(taskCallback){
                 var depthTasks = [];
                 Object.keys(symbolToAlgorithmMap).forEach(function(symbol){
-                    var marketData = profitStatus[symbolToAlgorithmMap[symbol]][symbol].exchangeInfo['Mintpal'];
+                    var marketData = profitStatus[symbolToAlgorithmMap[symbol]][symbol].exchangeInfo['Bleutrade'];
                     if (marketData.hasOwnProperty('BTC') && marketData['BTC'].bid > 0){
                         depthTasks.push(function(callback){
-                            _this.getMarketDepthFromMintpal('BTC', symbol, marketData['BTC'].bid, callback) 
+                            _this.getMarketDepthFromBleutrade(symbol, 'BTC', marketData['BTC'].bid, callback) 
                         });
                     }
                     if (marketData.hasOwnProperty('LTC') && marketData['LTC'].bid > 0){
                         depthTasks.push(function(callback){
-                            _this.getMarketDepthFromMintpal('LTC', symbol, marketData['LTC'].bid, callback) 
+                            _this.getMarketDepthFromBleutrade(symbol, 'LTC', marketData['LTC'].bid, callback) 
                         });
                     }
                 });
@@ -369,36 +385,38 @@ module.exports = function(logger){
             callback(null);
         });
     };
-    this.getMarketDepthFromMintpal = function(symbolA, symbolB, coinPrice, callback){
-        mintpalApi.getBuyOrderBook(symbolA, symbolB, function(err, response){
+    this.getMarketDepthFromBleutrade = function(symbolA, symbolB, coinPrice, callback){
+        bleutradeApi.getOrderBook(symbolA, symbolB, function(err, response){
             if (err){
+				
                 callback(err);
                 return;
             }
             var depth = new Number(0);
-            if (response.hasOwnProperty('data')){
-                var totalQty = new Number(0);
-                response['data'].forEach(function(order){
-                    var price = new Number(order.price);
-                    var limit = new Number(coinPrice * portalConfig.profitSwitch.depth);
-                    var qty = new Number(order.amount);
-                    // only measure the depth down to configured depth
-                    if (price >= limit){
-                       depth += (qty * price);
-                       totalQty += qty;
+            var totalQty = new Number(0);
+            response.result.buy.forEach(function(order){
+                var price = new Number(order.Rate);
+                var limit = new Number(coinPrice * portalConfig.profitSwitch.depth);
+                var qty = new Number(order.Quantity);
+                // only measure the depth down to configured 
+                if (price >= limit){
+                    depth += (qty * price);
+                    totalQty += qty;
                     }
-                });
-            }
-
-            var marketData = profitStatus[symbolToAlgorithmMap[symbolB]][symbolB].exchangeInfo['Mintpal'];
-            marketData[symbolA].depth = depth;
+            });
+            
+            var marketData = profitStatus[symbolToAlgorithmMap[symbolA]][symbolA].exchangeInfo['Bleutrade'];
+            marketData[symbolB].depth = depth;
             if (totalQty > 0)
-                marketData[symbolA].weightedBid = new Number(depth / totalQty);
+                marketData[symbolB].weightedBid = new Number(depth / totalQty);
             callback();
         });
     };
 
-
+	// 
+    // market data collection from Bittrex
+    //
+    
     this.getProfitDataBittrex = function(callback){
         async.series([
             function(taskCallback){
@@ -510,7 +528,127 @@ module.exports = function(logger){
         });
     };
 
+	// 
+    // market data collection from C-Cex
+    //
+    
+    this.getProfitDataCcex = function(callback){
+        async.series([
+            function(taskCallback){
+                ccexApi.getTicker(function(err, data){
+                    if (err){
+                        taskCallback(err);
+                        return;
+                    }
+                    Object.keys(symbolToAlgorithmMap).forEach(function(symbol){
+                        var exchangeInfo = profitStatus[symbolToAlgorithmMap[symbol]][symbol].exchangeInfo;
+                        if (!exchangeInfo.hasOwnProperty('Ccex'))
+                            exchangeInfo['Ccex'] = {};
+                        var marketData = exchangeInfo['Ccex'];
+                        if (data.hasOwnProperty(symbol.toLowerCase() + '-btc')) {
+                            if (!marketData.hasOwnProperty('BTC'))
+                                marketData['BTC'] = {};
 
+                            var btcData = data[symbol.toLowerCase() + '-btc'];
+                            marketData['BTC'].ask = new Number(btcData.sell);
+                            marketData['BTC'].bid = new Number(btcData.buy);
+                            marketData['BTC'].last = new Number(btcData.lastprice);
+                            //marketData['BTC'].baseVolume = new Number(btcData.baseVolume);
+                            //marketData['BTC'].quoteVolume = new Number(btcData.quoteVolume);
+							
+                        }
+                        if (data.hasOwnProperty(symbol + '-ltc')) {
+                            if (!marketData.hasOwnProperty('LTC'))
+                                marketData['LTC'] = {};
+
+                            var ltcData = data[symbol.toLowerCase() + '-ltc'];
+                            marketData['LTC'].ask = new Number(ltcData.sell);
+                            marketData['LTC'].bid = new Number(ltcData.buy);
+                            marketData['LTC'].last = new Number(ltcData.lastprice);
+                            //marketData['LTC'].baseVolume = new Number(ltcData.baseVolume);
+                            //marketData['LTC'].quoteVolume = new Number(ltcData.quoteVolume);
+                        }
+                        // save LTC to BTC exchange rate
+                        if (marketData.hasOwnProperty('LTC') && data.hasOwnProperty('LTC-BTC')) {
+                            var btcLtc = data['LTC-BTC'];
+                            marketData['LTC'].ltcToBtc = new Number(btcLtc.highestBid);
+                        }
+                    });
+
+                    taskCallback();
+                });
+            },
+            function(taskCallback){
+                var depthTasks = [];
+                Object.keys(symbolToAlgorithmMap).forEach(function(symbol){
+                    var marketData = profitStatus[symbolToAlgorithmMap[symbol]][symbol].exchangeInfo['Ccex'];
+                    if (marketData.hasOwnProperty('BTC') && marketData['BTC'].bid > 0){
+                        depthTasks.push(function(callback){
+                            _this.getMarketDepthFromCcex(symbol, 'BTC', marketData['BTC'].bid, callback) 
+                        });
+                    }
+                    if (marketData.hasOwnProperty('LTC') && marketData['LTC'].bid > 0){
+                        depthTasks.push(function(callback){
+                            _this.getMarketDepthFromCcex(symbol, 'LTC', marketData['LTC'].bid, callback) 
+                        });
+                    }
+                });
+
+                if (!depthTasks.length){
+                    taskCallback();
+                    return;
+                }
+                async.series(depthTasks, function(err){
+                    if (err){
+                        taskCallback(err);
+                        return;
+                    }
+                    taskCallback();
+                });
+            }
+        ], function(err){
+            if (err){
+                callback(err);
+                return;
+            }
+            callback(null);
+        });
+        
+    };
+    
+    this.getMarketDepthFromCcex = function(symbolA, symbolB, coinPrice, callback){
+        ccexApi.getOrderBook(symbolA.toLowerCase(), symbolB.toLowerCase(), function(err, data){
+            if (err){
+				callback(err);
+                return;
+            }
+            var depth = new Number(0);
+            var totalQty = new Number(0);
+						
+			var price = new Number(data['ticker'].buy);
+            var limit = new Number(coinPrice * portalConfig.profitSwitch.depth);
+			// not avaliable on c-cex then force to low
+            var qty = new Number(10);
+            // only measure the depth down to configured 
+            if (price >= limit){
+                depth += (qty * price);
+                totalQty += qty;
+                }
+			
+
+            var marketData = profitStatus[symbolToAlgorithmMap[symbolA]][symbolA].exchangeInfo['Ccex'];
+            marketData[symbolB].depth = depth;
+            if (totalQty > 0)
+                marketData[symbolB].weightedBid = new Number(depth / totalQty);
+			
+            callback();
+        });
+    };
+
+	// 
+    // data collection from Coin Daemon
+    //
+	
     this.getCoindDaemonInfo = function(callback){
         var daemonTasks = [];
         Object.keys(profitStatus).forEach(function(algo){
@@ -561,7 +699,11 @@ module.exports = function(logger){
         });
     };
 
-
+	
+	// 
+    // mining rate collect from Coin Daemon
+    //
+	
     this.getMiningRate = function(callback){
         var daemonTasks = [];
         Object.keys(profitStatus).forEach(function(algo){
@@ -640,12 +782,15 @@ module.exports = function(logger){
         if (portalConfig.profitSwitch.useCryptsy)
             profitabilityTasks.push(_this.getProfitDataCryptsy);
 
-        if (portalConfig.profitSwitch.useMintpal)
-            profitabilityTasks.push(_this.getProfitDataMintpal);
+        if (portalConfig.profitSwitch.useBleutrade)
+            profitabilityTasks.push(_this.getProfitDataBleutrade);
 
         if (portalConfig.profitSwitch.useBittrex)
             profitabilityTasks.push(_this.getProfitDataBittrex);
-
+		
+		if (portalConfig.profitSwitch.useCcex)
+            profitabilityTasks.push(_this.getProfitDataCcex);
+		
         profitabilityTasks.push(_this.getCoindDaemonInfo);
         profitabilityTasks.push(_this.getMiningRate);
 

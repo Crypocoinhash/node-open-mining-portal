@@ -103,11 +103,12 @@
 
     "profitSwitch": {
         "enabled": false,
-        "updateInterval": 600,
+        "updateInterval": 10,
         "depth": 0.90,
         "usePoloniex": true,
         "useCryptsy": true,
-        "useMintpal": true,
-        "useBittrex": true
+        "useBleutrade": true,
+        "useBittrex": true,
+		"useCcex": true
     }
 }

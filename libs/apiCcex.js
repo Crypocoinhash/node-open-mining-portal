@@ -8,19 +8,19 @@ module.exports = function() {
 
     // Constants
     var version         = '0.1.0',
-        PUBLIC_API_URL  = 'https://api.mintpal.com/v2/market',
-        PRIVATE_API_URL  = 'https://api.mintpal.com/v2/market',
+        PUBLIC_API_URL  = 'https://c-cex.com/t',
+        PRIVATE_API_URL = 'https://c-cex.com/t',
         USER_AGENT      = 'nomp/node-open-mining-portal'
 
     // Constructor
-    function Mintpal(key, secret){
+    function Ccex(key, secret){
         // Generate headers signed by this user's key and secret.
         // The secret is encapsulated and never exposed
         this._getPrivateHeaders = function(parameters){
             var paramString, signature;
 
             if (!key || !secret){
-                throw 'Mintpal: Error. API key and secret required';
+                throw 'C-Cex: Error. API key and secret required';
             }
 
             // Sort parameters alphabetically and convert to `arg1=foo&arg2=bar`
@@ -38,16 +38,16 @@ module.exports = function() {
     }
 
     // If a site uses non-trusted SSL certificates, set this value to false
-    Mintpal.STRICT_SSL = true;
+    Ccex.STRICT_SSL = false;
 
     // Helper methods
     function joinCurrencies(currencyA, currencyB){
-        return currencyA + '_' + currencyB;
+        return currencyA + '-' + currencyB + '.json';
     }
 
     // Prototype
-    Mintpal.prototype = {
-        constructor: Mintpal,
+    Ccex.prototype = {
+        constructor: Ccex,
 
         // Make an API request
         _request: function(options, callback){
@@ -57,7 +57,7 @@ module.exports = function() {
 
             options.headers['User-Agent'] = USER_AGENT;
             options.json = true;
-            options.strictSSL = Mintpal.STRICT_SSL;
+            //options.strictSSL = Ccex.STRICT_SSL;
 
             request(options, function(err, response, body) {
                 callback(err, body);
@@ -101,30 +101,38 @@ module.exports = function() {
         getTicker: function(callback){
             var options = {
                 method: 'GET',
-                url: PUBLIC_API_URL + '/summary',
+                url: PUBLIC_API_URL + '/prices.json',
                 qs: null
             };
 
             return this._request(options, callback);
         },
 
-        getBuyOrderBook: function(currencyA, currencyB, callback){
-            var options = {
-                method: 'GET',
-                url: PUBLIC_API_URL + '/orders/' + currencyB + '/' + currencyA + '/BUY',
-                qs: null
-            };
+        // getBuyOrderBook: function(currencyA, currencyB, callback){
+        //     var options = {
+        //         method: 'GET',
+        //         url: PUBLIC_API_URL + '/orders/' + currencyB + '/' + currencyA + '/BUY',
+        //         qs: null
+        //     };
 
-            return this._request(options, callback);
-        },
+        //     return this._request(options, callback);
+        // },
 
         getOrderBook: function(currencyA, currencyB, callback){
-            var parameters = {
-                    command: 'returnOrderBook',
-                    currencyPair: joinCurrencies(currencyA, currencyB)
-                };
+            //var parameters = {
+            //    market: joinCurrencies(currencyA, currencyB),
+            //    type: 'buy',
+            //    depth: '50'
+            //}
+            var options = {
+                method: 'GET',
+				//url: 'http://c-cex.com/t/cesc-btc.json',
+                url: PUBLIC_API_URL + '/' + currencyA + '-' + currencyB + '.json',
+				//url: PUBLIC_API_URL + '/' + market + '.json',
+                qs: null
+            }
 
-            return this._public(parameters, callback);
+            return this._request(options, callback);
         },
 
         getTradeHistory: function(currencyA, currencyB, callback){
@@ -212,5 +220,5 @@ module.exports = function() {
         }
     };
 
-    return Mintpal;
+    return Ccex;
 }();
