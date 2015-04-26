@@ -1,0 +1,7 @@
+{
+    "name": "Hazmatcoin",
+    "symbol": "HZT",
+    "algorithm": "scrypt",
+    "peerMagic": "f4ede2b9",
+    "peerMagicTestnet": "fcc1b7dc"
+}

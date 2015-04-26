@@ -1,0 +1,7 @@
+{
+    "name": "kolschcoin",
+    "symbol": "CGN",
+    "algorithm": "x11",
+    "peerMagic": "a1a0a2a3",
+    "peerMagicTestnet": "fcc1b7dc"
+}

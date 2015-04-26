@@ -1,0 +1,7 @@
+{
+    "name": "Morpheuscoin",
+    "symbol": "MRP",
+    "algorithm": "x11",
+    "peerMagic": "fdc3b9de",
+    "peerMagicTestnet": "fcc1b7dc"
+}

@@ -1,0 +1,7 @@
+{
+    "name": "Unrealcoin",
+    "symbol": "URC",
+    "algorithm": "scrypt",
+    "peerMagic": "d4caafeb",
+    "peerMagicTestnet": "fcc1b7dc"
+}

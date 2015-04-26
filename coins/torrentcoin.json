@@ -1,0 +1,7 @@
+{
+    "name": "Torrentcoin",
+    "symbol": "TCX",
+    "algorithm": "scrypt",
+    "peerMagic": "bca1d8eb",
+    "peerMagicTestnet": "fcc1b7dc"
+}
